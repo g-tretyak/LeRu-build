@@ -13,7 +13,7 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
-    <title>{{{ PRODUCT_NAME }}}</title>
+    <title>LeRu</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
 
     <link rel="stylesheet" href="TemplateData/style.css">
@@ -24,7 +24,7 @@
     <div id="unity-container" class="unity-desktop">
 
       <!-- Canvas in which Unity renders the game -->
-      <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
+      <canvas id="unity-canvas" width=1266 height=585 tabindex="-1"></canvas>
       <!-- Loading screen -->
       <div id="unity-loading-bar">
         <div id="unity-progress-bar-empty">
@@ -37,7 +37,7 @@
     </div>
 
     <!-- Script Unity needs to import. -->
-    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+    <script src="Build/docs.loader.js"></script>
     <!-- JavaScript Code. -->
     <script>
 
@@ -56,8 +56,8 @@
       }
       else
       {
-        canvas.style.width = "{{{ WIDTH }}}px";
-        canvas.style.height = "{{{ HEIGHT }}}px";
+        canvas.style.width = "1266px";
+        canvas.style.height = "585px";
       }
 
       // Loading screen functionality.
@@ -89,21 +89,13 @@
 
       var config = {
         arguments: [],
-        dataUrl: "Build/{{{ DATA_FILENAME }}}",
-        frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
-        #if USE_THREADS
-          workerUrl: "Build/{{{ WORKER_FILENAME }}}",
-        #endif
-        #if USE_WASM
-          codeUrl: "Build/{{{ CODE_FILENAME }}}",
-        #endif
-        #if SYMBOLS_FILENAME
-          symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
-        #endif
+        dataUrl: "Build/docs.data",
+        frameworkUrl: "Build/docs.framework.js",
+          codeUrl: "Build/docs.wasm",
         streamingAssetsUrl: "StreamingAssets",
-        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
-        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
-        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        companyName: "DefaultCompany",
+        productName: "LeRu",
+        productVersion: "v.01.03.02.2026.22:26",
         showBanner: unityShowBanner,
       };
 
