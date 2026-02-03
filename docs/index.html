@@ -1,88 +1,233 @@
-
-<!-- 
-  
-   This is basically Unity’s default web template.
-   Quickly and badly modified by me to remove the white footer with the Unity logo, but keeping the maximize button.
-   Changing also a couple of colors in CSS. Everything else, remains as it is in the default template.
-
--->
-
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-
-    <title>LeRu</title>
+    <title>Unity Web Player | LeRu</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
-
     <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+      #unity-fullscreen-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        margin-left: 8px;
+        cursor: pointer;
+        border-radius: 4px;
+        border: none;
+        background: transparent;
+        -webkit-tap-highlight-color: rgba(0,0,0,0);
+      }
+      #unity-fullscreen-button:active { transform: translateY(1px); }
+      #unity-fullscreen-button svg { width: 18px; height: 18px; pointer-events: none; }
+
+      .unity-css-maximized {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 999999 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: black !important;
+      }
+      .unity-css-maximized #unity-canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .sr-only {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0,0,0,0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+      }
+    </style>
   </head>
-
   <body>
-
     <div id="unity-container" class="unity-desktop">
-
-      <!-- Canvas in which Unity renders the game -->
       <canvas id="unity-canvas" width=1266 height=585 tabindex="-1"></canvas>
-      <!-- Loading screen -->
       <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
-      <!-- Maximize button -->
-	    <div id="unity-fullscreen-button"></div>
+      <div id="unity-warning"> </div>
+      <div id="unity-footer">
+        <div id="unity-logo-title-footer"></div>
 
+        <button id="unity-fullscreen-button" aria-pressed="false" aria-label="Maximize game" title="Maximize">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path id="unity-fullscreen-icon" d="M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zM3 21v-8h2v6h6v2H3zm18 0h-8v-2h6v-6h2v8z" fill="currentColor"/>
+          </svg>
+          <span class="sr-only" id="unity-fullscreen-text">Maximize</span>
+        </button>
+
+        <div id="unity-build-title">LeRu</div>
+      </div>
     </div>
-
-    <!-- Script Unity needs to import. -->
-    <script src="Build/docs.loader.js"></script>
-    <!-- JavaScript Code. -->
     <script>
-
-      // Define the style on desktop and mobile devices.
-      //    On mobile: fill the whole browser client area.
-      //    On desktop: render the canvas with the size set on the unity editor.
       var canvas = document.querySelector("#unity-canvas");
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
-      {
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
+      var container = document.getElementById("unity-container");
+      var fullscreenButton = document.getElementById("unity-fullscreen-button");
+      var fullscreenText = document.getElementById("unity-fullscreen-text");
+      var fullscreenIconPath = document.getElementById("unity-fullscreen-icon");
+
+      var unityInstanceGlobal = null;
+
+      var cssMaximized = false;
+      var previousContainerStyle = {};
+      var previousCanvasStyle = {};
+      var previousBodyOverflow = null;
+
+      function isIOS() {
+        return /iPhone|iPad|iPod/i.test(navigator.userAgent);
       }
-      else
-      {
-        canvas.style.width = "1266px";
-        canvas.style.height = "585px";
+
+      function supportsFullscreenAPI() {
+        var el = document.documentElement;
+        return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen);
       }
 
-      // Loading screen functionality.
-      var loadingScreen = document.querySelector("#unity-loading-bar");
-      var loadingBar =  document.querySelector("#progress-bar-full");
+      function setButtonToRestore() {
+        fullscreenIconPath.setAttribute("d",
+          "M7 7h4V5H5v6h2V7zm10 0v4h2V5h-6v2h4zM7 17v-4H5v6h6v-2H7zm10 0h-4v2h6v-6h-2v4z"
+        );
+        fullscreenText.textContent = "Restore";
+        fullscreenButton.setAttribute("aria-pressed", "true");
+        fullscreenButton.title = "Restore";
+      }
+      function setButtonToMaximize() {
+        fullscreenIconPath.setAttribute("d", "M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zM3 21v-8h2v6h6v2H3zm18 0h-8v-2h6v-6h2v8z");
+        fullscreenText.textContent = "Maximize";
+        fullscreenButton.setAttribute("aria-pressed", "false");
+        fullscreenButton.title = "Maximize";
+      }
 
-      loadingScreen.style.display = "block";
-      var onLoadProgress = (progress)=>
-      {
-        loadingBar.style.width = (100*progress) + "%";
-        if (progress >= 1)
-        {
-          loadingScreen.style.display = "none";
-        }
-      };
+      function requestNativeFullscreen(element) {
+        if (element.requestFullscreen) return element.requestFullscreen();
+        if (element.webkitRequestFullscreen) return element.webkitRequestFullscreen();
+        if (element.msRequestFullscreen) return element.msRequestFullscreen();
+        return Promise.reject("Fullscreen API not available");
+      }
+      function exitNativeFullscreen() {
+        if (document.exitFullscreen) return document.exitFullscreen();
+        if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+        if (document.msExitFullscreen) return document.msExitFullscreen();
+        return Promise.reject("exitFullscreen not available");
+      }
+      function isInNativeFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+      }
 
-      // Maximze button functionality.
-      onGameLoaded = (unityInstance) =>
-      {
-        var maximizeButton = document.querySelector("#unity-fullscreen-button");
-        maximizeButton.onclick = () =>
-        {
-          unityInstance.SetFullscreen(1);
+      function enterCssMaximized() {
+        if (cssMaximized) return;
+        previousContainerStyle = {
+          position: container.style.position || "",
+          top: container.style.top || "",
+          left: container.style.left || "",
+          width: container.style.width || "",
+          height: container.style.height || "",
+          zIndex: container.style.zIndex || "",
+          margin: container.style.margin || "",
+          padding: container.style.padding || "",
+          background: container.style.background || ""
         };
-      };
+        previousCanvasStyle = {
+          width: canvas.style.width || "",
+          height: canvas.style.height || ""
+        };
+        previousBodyOverflow = document.body.style.overflow || "";
+
+        container.classList.add("unity-css-maximized");
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        document.body.style.overflow = "hidden";
+        cssMaximized = true;
+        setButtonToRestore();
+
+        if (unityInstanceGlobal && typeof unityInstanceGlobal.Module !== "undefined" && typeof unityInstanceGlobal.Module.canvas !== "undefined") {
+          window.dispatchEvent(new Event('resize'));
+        }
+      }
+
+      function exitCssMaximized() {
+        if (!cssMaximized) return;
+        container.classList.remove("unity-css-maximized");
+        Object.keys(previousContainerStyle).forEach(function(k) {
+          container.style[k] = previousContainerStyle[k];
+        });
+        Object.keys(previousCanvasStyle).forEach(function(k) {
+          canvas.style[k] = previousCanvasStyle[k];
+        });
+        document.body.style.overflow = previousBodyOverflow;
+        cssMaximized = false;
+        setButtonToMaximize();
+
+        if (unityInstanceGlobal && typeof unityInstanceGlobal.Module !== "undefined" && typeof unityInstanceGlobal.Module.canvas !== "undefined") {
+          window.dispatchEvent(new Event('resize'));
+        }
+      }
+
+      function toggleMaximize() {
+        if (isInNativeFullscreen()) {
+          exitNativeFullscreen().catch(function() {
+            exitCssMaximized();
+          });
+          return;
+        }
+
+        if (cssMaximized) {
+          exitCssMaximized();
+          return;
+        }
+
+        if (supportsFullscreenAPI() && !isIOS()) {
+          requestNativeFullscreen(container).then(function() {
+            setButtonToRestore();
+          }).catch(function(e) {
+            if (unityInstanceGlobal && typeof unityInstanceGlobal.SetFullscreen === "function") {
+              try { unityInstanceGlobal.SetFullscreen(1); setButtonToRestore(); }
+              catch (err) { enterCssMaximized(); }
+            } else {
+              enterCssMaximized();
+            }
+          });
+          return;
+        }
+
+        enterCssMaximized();
+      }
+
+      document.addEventListener("fullscreenchange", function() {
+        if (!isInNativeFullscreen()) {
+          setButtonToMaximize();
+        } else {
+          setButtonToRestore();
+        }
+      });
+      document.addEventListener("webkitfullscreenchange", function() {
+        if (!isInNativeFullscreen()) setButtonToMaximize();
+        else setButtonToRestore();
+      });
+      document.addEventListener("msfullscreenchange", function() {
+        if (!isInNativeFullscreen()) setButtonToMaximize();
+        else setButtonToRestore();
+      });
+
+      fullscreenButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        toggleMaximize();
+      });
 
       function unityShowBanner(msg, type) {
         var warningBanner = document.querySelector("#unity-warning");
@@ -103,24 +248,72 @@
         updateBannerVisibility();
       }
 
-      // ----------
-      // Load the game.
-
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/docs.loader.js";
       var config = {
         arguments: [],
-        dataUrl: "Build/docs.data",
-        frameworkUrl: "Build/docs.framework.js",
-          codeUrl: "Build/docs.wasm",
+        dataUrl: buildUrl + "/docs.data",
+        frameworkUrl: buildUrl + "/docs.framework.js",
+        codeUrl: buildUrl + "/docs.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "LeRu",
-        productVersion: "v.01.03.02.2026.22:40",
+        productVersion: "v.01.03.02.2026.22:57",
         showBanner: unityShowBanner,
       };
 
-      createUnityInstance(canvas, config, onLoadProgress)
-      .then(onGameLoaded);
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        document.querySelector("#unity-container").className = "unity-mobile";
+        canvas.className = "unity-mobile";
+      } else {
+        canvas.style.width = "1266px";
+        canvas.style.height = "585px";
+      }
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+            unityInstanceGlobal = unityInstance;
+
+            document.querySelector("#unity-loading-bar").style.display = "none";
+            document.querySelector("#unity-fullscreen-button").onclick = function(e) {
+              e.preventDefault();
+              toggleMaximize();
+            };
+
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+
+      document.body.appendChild(script);
+
+      window.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" || e.key === "Esc") {
+          if (cssMaximized && !isInNativeFullscreen()) {
+            exitCssMaximized();
+          }
+        }
+      });
+
+      window.addEventListener("orientationchange", function() {
+        if (cssMaximized || isInNativeFullscreen()) {
+          setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 300);
+        }
+      });
+      window.addEventListener("resize", function() {
+      });
 
     </script>
   </body>
 </html>
+
