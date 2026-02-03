@@ -67,7 +67,7 @@
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "LeRu",
-        productVersion: "v.01.03.02.2026.23:41",
+        productVersion: "v.01.03.02.2026.23:50",
         showBanner: unityShowBanner,
       };
 
@@ -105,7 +105,7 @@
     // requestFullscreen() currently not working on iOS
     if (IsAndroid()) {
       var fullscreenDiv = document.createElement('fullscreen-div');
-      fullscreenDiv.style.cssText = 'display: flex; justify-content: center; align-items: center; position: fixed; top: 25%; left: 0; width: 100%; height: 50%; color: white; background-color: blue; font-family: sans-serif; z-index: 10000;';
+      fullscreenDiv.style.cssText = 'display: flex; justify-content: center; align-items: center; position: fixed; top: 25%; left: 0; width: 100%; height: 50%; color: white; background-color: transparent; font-family: sans-serif; z-index: 10000;';
       fullscreenDiv.innerHTML += 'TAP FOR FULLSCREEN';
       fullscreenDiv.onclick = function () {
         canvas.requestFullscreen();
