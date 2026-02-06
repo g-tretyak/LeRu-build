@@ -1,4 +1,4 @@
-const cacheName = "DefaultCompany-LeRu-v.01.04.02.2026.00:08";
+const cacheName = "DefaultCompany-LeRu-v.01.06.02.2026.06:13";
 const contentToCache = [
     "Build/docs.loader.js",
     "Build/docs.framework.js",
